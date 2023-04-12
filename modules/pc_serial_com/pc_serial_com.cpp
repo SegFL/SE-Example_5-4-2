@@ -23,6 +23,16 @@ typedef enum{
     PC_SERIAL_SAVE_NEW_CODE,
 } pcSerialComMode_t;
 
+
+//Un tipo de dato que utiliza la funcion commandSetDateAndTime para saber que campo de la fecha y hora se esta modificando
+typedef enum {SETTING_YEAR,
+               SETTING_MONTH,
+                SETTING_DAY,
+                SETTING_HOUR,
+                SETTING_MINUTE,
+                SETTING_SECOND,
+ } setting_date_and_time_status_t;
+
 //=====[Declaration and initialization of public global objects]===============
 
 UnbufferedSerial uartUsb(USBTX, USBRX, 115200);
@@ -38,6 +48,9 @@ char codeSequenceFromPcSerialCom[CODE_NUMBER_OF_KEYS];
 static pcSerialComMode_t pcSerialComMode = PC_SERIAL_COMMANDS;
 static bool codeComplete = false;
 static int numberOfCodeChars = 0;
+
+static bool settingDateAndTimer=false;                  //Variable que utiliza pcSerialComCommandUpdate para saber si se esta actualizando el dia y la hora
+setting_date_and_time_status_t date_and_time_status=SETTING_YEAR;
 
 //=====[Declarations (prototypes) of private functions]========================
 
@@ -56,7 +69,7 @@ static void commandEnterCodeSequence();
 static void commandEnterNewCode();
 static void commandShowCurrentTemperatureInCelsius();
 static void commandShowCurrentTemperatureInFahrenheit();
-static void commandSetDateAndTime();
+static void commandSetDateAndTime(const char charReceived);
 static void commandShowDateAndTime();
 static void commandShowStoredEvents();
 
@@ -155,6 +168,11 @@ static void pcSerialComSaveNewCodeUpdate( char receivedChar )
 
 static void pcSerialComCommandUpdate( char receivedChar )
 {
+    //En el caso de que se este actualizando la fecha no muestro el menu si no que voy directamente setear la fecha
+    if(settingDateAndTimer==true)
+        commandSetDateAndTime(receivedChar);
+
+   
     switch (receivedChar) {
         case '1': commandShowCurrentAlarmState(); break;
         case '2': commandShowCurrentGasDetectorState(); break;
@@ -163,11 +181,12 @@ static void pcSerialComCommandUpdate( char receivedChar )
         case '5': commandEnterNewCode(); break;
         case 'c': case 'C': commandShowCurrentTemperatureInCelsius(); break;
         case 'f': case 'F': commandShowCurrentTemperatureInFahrenheit(); break;
-        case 's': case 'S': commandSetDateAndTime(); break;
+        case 's': case 'S': commandSetDateAndTime('\0'); break;
         case 't': case 'T': commandShowDateAndTime(); break;
         case 'e': case 'E': commandShowStoredEvents(); break;
         default: availableCommands(); break;
     } 
+    
 }
 
 static void availableCommands()
@@ -251,14 +270,77 @@ static void commandShowCurrentTemperatureInFahrenheit()
     pcSerialComStringWrite( str );  
 }
 
-static void commandSetDateAndTime()
+static void commandSetDateAndTime(const char charReceived)
 {
-    char year[5] = "";
-    char month[3] = "";
-    char day[3] = "";
-    char hour[3] = "";
-    char minute[3] = "";
-    char second[3] = "";
+
+
+	static char year[5] = "";
+	static char month[3] = "";
+	static char day[3] = "";
+	static char hour[3] = "";
+	static char minute[3] = "";
+	static char second[3] = "";
+	static int indice = 0;
+
+    //En caso de que el caracter sea nulo no hago nada
+    if(charReceived=='\0')
+        return;
+
+	switch (date_and_time_status) {
+        case SETTING_YEAR: {
+            if(indice==0){pcSerialComStringWrite("\r\nType four digits for the current year (YYYY): ");}
+            if (indice < 5) { year[indice] = charReceived;indice++;}
+            if (indice == 4) {  year[4] = '\0'; indice = 0;   date_and_time_status = SETTING_MONTH; 
+                                pcSerialComStringWrite("\r\n");}
+        } break;
+
+        case SETTING_MONTH: {
+            if(indice==0){ pcSerialComStringWrite("Type two digits for the current month (01-12): ");}
+            if (indice < 2) { month[indice] = charReceived;indice++; }
+            if (indice == 1) { month[2] = '\0';indice = 0; date_and_time_status = SETTING_DAY;
+                                  pcSerialComStringWrite("\r\n");}
+        } break;
+
+        case SETTING_DAY: {
+            if(indice==0){pcSerialComStringWrite("Type two digits for the current day (01-31): ");}
+            if (indice < 2) {  day[indice] = charReceived; indice++; }
+            if (indice == 1) { day[2] = '\0';indice = 0; date_and_time_status = SETTING_HOUR;
+                             pcSerialComStringWrite("\r\n");}
+        } break;
+
+        case SETTING_HOUR: {
+            if(indice==0){pcSerialComStringWrite("Type two digits for the current hour (00-23): ");}
+            if (indice < 2) { hour[indice] = charReceived; indice++; }
+            if (indice == 1) {  hour[2] = '\0';indice = 0; date_and_time_status = SETTING_MINUTE;
+                            pcSerialComStringWrite("\r\n");}
+        } break;
+
+        case SETTING_MINUTE: {
+            if(indice==0){pcSerialComStringWrite("Type two digits for the current minutes (00-59): ");}
+            if (indice < 2) { second[indice] = charReceived; indice++; }
+            if (indice == 1) {  second[2] = '\0';indice = 0; date_and_time_status = SETTING_SECOND;
+                            pcSerialComStringWrite("\r\n");}
+        } break;
+
+        case SETTING_SECOND: {
+            if(indice==0){pcSerialComStringWrite("Type two digits for the current seconds (00-59): ");}
+            if (indice < 2) { second[indice] = charReceived; indice++; }
+            if (indice == 1) { second[2] = '\0'; indice = 0; settingDateAndTimer=false;date_and_time_status = SETTING_YEAR;
+                        pcSerialComStringWrite("\r\n"); }
+        } break;
+
+        default:
+            break;
+	}
+ 
+
+    pcSerialComStringWrite("Date and time has been set\r\n");
+
+    dateAndTimeWrite( atoi(year), atoi(month), atoi(day), 
+        atoi(hour), atoi(minute), atoi(second) );
+
+
+    /*  
     
     pcSerialComStringWrite("\r\nType four digits for the current year (YYYY): ");
     pcSerialComStringRead( year, 4);
@@ -283,11 +365,7 @@ static void commandSetDateAndTime()
     pcSerialComStringWrite("Type two digits for the current seconds (00-59): ");
     pcSerialComStringRead( second, 2);
     pcSerialComStringWrite("\r\n");
-    
-    pcSerialComStringWrite("Date and time has been set\r\n");
-
-    dateAndTimeWrite( atoi(year), atoi(month), atoi(day), 
-        atoi(hour), atoi(minute), atoi(second) );
+ */ 
 }
 
 static void commandShowDateAndTime()
