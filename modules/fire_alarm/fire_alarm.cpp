@@ -101,7 +101,7 @@ static void fireAlarmActivationUpdate()
         strobeLightStateWrite(ON);
     }
 
-    gasDetectorState = !gasSensorRead();
+    gasDetectorState = gasSensorRead();// gasDetectorState = !gasSensorRead();
 
     if ( gasDetectorState ) {
         gasDetected = ON;

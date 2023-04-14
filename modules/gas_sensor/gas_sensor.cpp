@@ -24,15 +24,17 @@ DigitalIn mq2(PE_12);
 
 void gasSensorInit()
 {
+    mq2.mode(PullDown);
 }
 
 void gasSensorUpdate()
 {
+
 }
 
 bool gasSensorRead()
 {
-    return mq2;
+    return false;
 }
 
 //=====[Implementations of private functions]==================================
