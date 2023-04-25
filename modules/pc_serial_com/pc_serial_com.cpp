@@ -310,20 +310,20 @@ static void commandSetDateAndTime(const char charReceived)
 /*Cambios para que no sea bloquiante:Semana 4*/
 //
         switch (date_and_time_status) {
-                case SETTING_YEAR: {
-                    if (indice < 4) {
-                        dat.year[indice] = charReceived;
-                        indice++;
-                    }
-                    if (indice == 4) {
-                        dat.year[4] = '\0';
-                        indice = 0;
-                        date_and_time_status = SETTING_MONTH;
-                        pcSerialComStringWrite("\r\n");
-                        pcSerialComStringWrite(
-                            "Type two digits for the current month (01-12): ");
-                    }        
-                } break;
+            case SETTING_YEAR: {
+                if (indice < 4) {
+                    dat.year[indice] = charReceived;
+                    indice++;
+                }
+                if (indice == 4) {
+                    dat.year[4] = '\0';
+                    indice = 0;
+                    date_and_time_status = SETTING_MONTH;
+                    pcSerialComStringWrite("\r\n");
+                    pcSerialComStringWrite(
+                        "Type two digits for the current month (01-12): ");
+                }        
+            } break;
 
             case SETTING_MONTH: {
                     if (indice < 2) {
@@ -337,7 +337,7 @@ static void commandSetDateAndTime(const char charReceived)
                     pcSerialComStringWrite("\r\n");
                     pcSerialComStringWrite("Type two digits for the current day (01-31): ");
                     }
-                } break;
+            } break;
 
             case SETTING_DAY: {
                     if (indice < 2) {
@@ -352,7 +352,7 @@ static void commandSetDateAndTime(const char charReceived)
                         pcSerialComStringWrite(
                             "Type two digits for the current hour (00-23): ");
                     }    
-                } break;
+            } break;
 
             case SETTING_HOUR: {
                 if (indice < 2) {
@@ -400,6 +400,10 @@ static void commandSetDateAndTime(const char charReceived)
                     pcSerialComStringWrite("\r\n");
                     pcSerialComStringWrite("Date and time has been set\r\n");
                 }    
+            } break;
+    
+            case SETTING_DESACTIVATE: {
+                indice = 0;
             } break;
         }
 
