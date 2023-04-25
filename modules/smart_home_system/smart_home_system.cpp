@@ -39,7 +39,7 @@ void smartHomeSystemUpdate()
 {
     userInterfaceUpdate();
     fireAlarmUpdate();    
-    pcSerialComUpdate();
+    pcSerialComUpdate();    //funcion que contenia codigo bloqueante
     eventLogUpdate();
     delay(SYSTEM_TIME_INCREMENT_MS);
 }

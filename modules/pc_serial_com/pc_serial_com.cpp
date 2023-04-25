@@ -23,14 +23,27 @@ typedef enum{
     PC_SERIAL_SAVE_NEW_CODE,
 } pcSerialComMode_t;
 
+// estructura con las variables para configurar la hora
+struct dateAndTime{
+     char year[5] = "";
+	char month[3] = "";
+	char day[3] = "";
+	char hour[3] = "";
+	char minute[3] = "";
+	char second[3] = "";
+};
 
-//Un tipo de dato que utiliza la funcion commandSetDateAndTime para saber que campo de la fecha y hora se esta modificando
-typedef enum {SETTING_YEAR,
-               SETTING_MONTH,
+
+
+//Un tipo de dato que utiliza la funcion commandSetDateAndTime para saber que campo de la fecha
+// y hora se esta modificando
+typedef enum {  SETTING_YEAR,
+                SETTING_MONTH,
                 SETTING_DAY,
                 SETTING_HOUR,
                 SETTING_MINUTE,
                 SETTING_SECOND,
+                SETTING_DESACTIVATE,
  } setting_date_and_time_status_t;
 
 //=====[Declaration and initialization of public global objects]===============
@@ -50,7 +63,7 @@ static bool codeComplete = false;
 static int numberOfCodeChars = 0;
 
 static bool settingDateAndTimer=false;      //Variable que utiliza pcSerialComCommandUpdate para saber si se esta actualizando el dia y la hora
-setting_date_and_time_status_t date_and_time_status=SETTING_YEAR;
+setting_date_and_time_status_t date_and_time_status = SETTING_DESACTIVATE;
 
 //=====[Declarations (prototypes) of private functions]========================
 
@@ -168,7 +181,9 @@ static void pcSerialComSaveNewCodeUpdate( char receivedChar )
 
 static void pcSerialComCommandUpdate( char receivedChar )
 {
-    //En el caso de que se este actualizando la fecha no muestro el menu si no que voy directamente setear la fecha
+    //  FIX DE CODIGO BLOQUEANTE
+    //  En el caso de que se este actualizando la fecha no muestro el menu
+    //  si no que voy directamente setear la fecha
     if(settingDateAndTimer==true) {
         commandSetDateAndTime(receivedChar);
         return;
@@ -182,7 +197,7 @@ static void pcSerialComCommandUpdate( char receivedChar )
         case '5': commandEnterNewCode(); break;
         case 'c': case 'C': commandShowCurrentTemperatureInCelsius(); break;
         case 'f': case 'F': commandShowCurrentTemperatureInFahrenheit(); break;
-        case 's': case 'S': commandSetDateAndTime('\0'); break;
+        case 's': case 'S': commandSetDateAndTime('\0'); break; //al entrar a la funcion la primera vez ingreso con el caracter 
         case 't': case 'T': commandShowDateAndTime(); break;
         case 'e': case 'E': commandShowStoredEvents(); break;
         default: availableCommands(); break;
@@ -271,117 +286,120 @@ static void commandShowCurrentTemperatureInFahrenheit()
     pcSerialComStringWrite( str );  
 }
 
+// FIX CODIGO BLOQUEANTE
+//  esta funcion realizaba una actualizacion de la fecha y hora de manerasecuencial
+//  por lo que para que retorne de estafuncion se debia completar la actualiacion de la hora y fecha
+//  esto genera que la actualizacion de la alarma quede bloqueada, se introduce una logica no bloqueante
 static void commandSetDateAndTime(const char charReceived)
 {
 
-
-	static char year[5] = "";
-	static char month[3] = "";
-	static char day[3] = "";
-	static char hour[3] = "";
-	static char minute[3] = "";
-	static char second[3] = "";
-	static int indice = 0;
-
+    static dateAndTime dat;
+    static int indice;
 
     //En caso de que el caracter sea nulo no hago nada
-    if(charReceived=='\0') {
+    if(charReceived =='\0') {
         puts("Entro a :commandSetDateAndTime por primera vez\n");
           pcSerialComStringWrite("\r\nType four digits for the current year (YYYY): ");
         settingDateAndTimer = true;
+        date_and_time_status = SETTING_YEAR;
+        indice = 0;
          return;
     }
 
   
 /*Cambios para que no sea bloquiante:Semana 4*/
+//
         switch (date_and_time_status) {
                 case SETTING_YEAR: {
                     if (indice < 4) {
-                        year[indice] = charReceived;
+                        dat.year[indice] = charReceived;
                         indice++;
-                        break;
                     }
-                    year[4] = '\0';
-                    indice = 0;
-                    date_and_time_status = SETTING_MONTH;
-                    pcSerialComStringWrite("\r\n");
-                    pcSerialComStringWrite(
-                        "Type two digits for the current month (01-12): ");
+                    if (indice == 4) {
+                        dat.year[4] = '\0';
+                        indice = 0;
+                        date_and_time_status = SETTING_MONTH;
+                        pcSerialComStringWrite("\r\n");
+                        pcSerialComStringWrite(
+                            "Type two digits for the current month (01-12): ");
+                    }        
                 } break;
 
             case SETTING_MONTH: {
                     if (indice < 2) {
-                        month[indice] = charReceived;
+                        dat.month[indice] = charReceived;
                         indice++;
-                        break;
                     }
-
-                    month[2] = '\0';
+                    if (indice == 2) {
+                    dat.month[2] = '\0';
                     indice = 0;
                     date_and_time_status = SETTING_DAY;
                     pcSerialComStringWrite("\r\n");
                     pcSerialComStringWrite("Type two digits for the current day (01-31): ");
+                    }
                 } break;
 
             case SETTING_DAY: {
                     if (indice < 2) {
-                        day[indice] = charReceived;
+                        dat.day[indice] = charReceived;
                         indice++;
-                        break;
                     }
-
-                    day[2] = '\0';
-                    indice = 0;
-                    date_and_time_status = SETTING_HOUR;
-                    pcSerialComStringWrite("\r\n");
-                    pcSerialComStringWrite(
-                        "Type two digits for the current hour (00-23): ");
+                    if (indice == 2) {
+                        dat.day[2] = '\0';
+                        indice = 0;
+                        date_and_time_status = SETTING_HOUR;
+                        pcSerialComStringWrite("\r\n");
+                        pcSerialComStringWrite(
+                            "Type two digits for the current hour (00-23): ");
+                    }    
                 } break;
 
             case SETTING_HOUR: {
                 if (indice < 2) {
-                    hour[indice] = charReceived;
+                    dat.hour[indice] = charReceived;
                     indice++;
-                    break;
                 }
-
-                hour[2] = '\0';
-                indice = 0;
-                date_and_time_status = SETTING_MINUTE;
-                pcSerialComStringWrite("\r\n");
-                pcSerialComStringWrite(
-                    "Type two digits for the current minutes (00-59): ");
+                if (indice == 2) {
+                    dat.hour[2] = '\0';
+                    indice = 0;
+                    date_and_time_status = SETTING_MINUTE;
+                    pcSerialComStringWrite("\r\n");
+                    pcSerialComStringWrite(
+                     "Type two digits for the current minutes (00-59): ");
+                }
             } break;
 
             case SETTING_MINUTE: {
                 if (indice < 2) {
-                    second[indice] = charReceived;
+                    dat.second[indice] = charReceived;
                     indice++;
-                    break;
+
                 }
-                second[2] = '\0';
-                indice = 0;
-                date_and_time_status = SETTING_SECOND;
-                pcSerialComStringWrite("\r\n");
-                pcSerialComStringWrite(
-                    "Type two digits for the current seconds (00-59): ");
+                if (indice == 2) {
+                    dat.second[2] = '\0';
+                    indice = 0;
+                    date_and_time_status = SETTING_SECOND;
+                    pcSerialComStringWrite("\r\n");
+                    pcSerialComStringWrite(
+                        "Type two digits for the current seconds (00-59): ");
+                }        
             } break;
 
             case SETTING_SECOND: {
                 if (indice < 2) {
-                    second[indice] = charReceived;
+                    dat.second[indice] = charReceived;
                     indice++;
-                    break;
                 }
-
-                second[2] = '\0';
-                indice = 0;
-                settingDateAndTimer = false;
-                date_and_time_status = SETTING_YEAR;
-                dateAndTimeWrite(atoi(year), atoi(month), atoi(day), atoi(hour),
-                        atoi(minute), atoi(second));
-                pcSerialComStringWrite("\r\n");
-                pcSerialComStringWrite("Date and time has been set\r\n");
+                if (indice == 2) {
+                    dat.second[2] = '\0';
+                    dateAndTimeWrite(atoi(dat.year), atoi(dat.month), atoi(dat.day), atoi(dat.hour),
+                            atoi(dat.minute), atoi(dat.second));
+                    indice = 0;
+                    settingDateAndTimer = false; // pongo en falso la variable para saber si se estacambiando la fecha y hora
+                    date_and_time_status = SETTING_DESACTIVATE;
+                    pcSerialComStringWrite("\r\n");
+                    pcSerialComStringWrite("Date and time has been set\r\n");
+                }    
             } break;
         }
 
